@@ -62,6 +62,7 @@ Console.WriteLine($"route={decision.Path}");
 Console.WriteLine($"score={decision.Score}");
 Console.WriteLine($"reasons={string.Join("; ", decision.Reasons)}");
 Console.WriteLine($"attempts={result.Attempts}");
+Console.WriteLine($"deployment={selectedModel}");
 
 if (!result.Succeeded)
 {

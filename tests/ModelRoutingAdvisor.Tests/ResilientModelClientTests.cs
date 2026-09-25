@@ -79,6 +79,24 @@ public sealed class ResilientModelClientTests
         Assert.Equal(3, transport.CallCount);
     }
 
+    [Fact]
+    public async Task HonorsBoundedServiceRetryDelay()
+    {
+        var transport = new ScriptedTransport(
+            _ => throw new ModelTransportException(
+                ModelErrorCategory.RateLimited,
+                "slow down",
+                isTransient: true,
+                retryAfter: TimeSpan.FromMilliseconds(20)),
+            _ => Task.FromResult(new ModelResponse("ok", "fake")));
+        var started = DateTimeOffset.UtcNow;
+
+        var result = await CreateClient(transport, maxAttempts: 2).ExecuteAsync(Request);
+
+        Assert.True(result.Succeeded);
+        Assert.True(DateTimeOffset.UtcNow - started >= TimeSpan.FromMilliseconds(15));
+    }
+
     private static ResilientModelClient CreateClient(
         IModelTransport transport,
         int maxAttempts) =>

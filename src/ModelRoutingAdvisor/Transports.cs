@@ -25,22 +25,19 @@ public sealed class FakeModelTransport : IModelTransport
 }
 
 public sealed record FoundryOptions(
-    Uri Endpoint,
+    Uri ProjectEndpoint,
     string LowCostDeployment,
-    string HighCapabilityDeployment,
-    string ApiVersion)
+    string HighCapabilityDeployment)
 {
     public const string EndpointVariable = "FOUNDRY_ENDPOINT";
     public const string LowCostDeploymentVariable = "FOUNDRY_LOW_COST_DEPLOYMENT";
     public const string HighCapabilityDeploymentVariable = "FOUNDRY_HIGH_CAPABILITY_DEPLOYMENT";
-    public const string ApiVersionVariable = "FOUNDRY_API_VERSION";
 
     public static FoundryOptions FromEnvironment()
     {
         var endpointValue = Environment.GetEnvironmentVariable(EndpointVariable);
         var lowCostDeployment = Environment.GetEnvironmentVariable(LowCostDeploymentVariable);
         var highCapabilityDeployment = Environment.GetEnvironmentVariable(HighCapabilityDeploymentVariable);
-        var apiVersion = Environment.GetEnvironmentVariable(ApiVersionVariable) ?? "2024-10-21";
 
         var missing = new[]
             {
@@ -67,11 +64,23 @@ public sealed record FoundryOptions(
                 $"{EndpointVariable} must be an absolute HTTPS URI.");
         }
 
-        return new FoundryOptions(
-            endpoint,
-            lowCostDeployment!,
-            highCapabilityDeployment!,
-            apiVersion);
+        return new FoundryOptions(NormalizeProjectEndpoint(endpoint), lowCostDeployment!, highCapabilityDeployment!);
+    }
+
+    public static Uri NormalizeProjectEndpoint(Uri endpoint)
+    {
+        ArgumentNullException.ThrowIfNull(endpoint);
+
+        if (!endpoint.IsAbsoluteUri ||
+            endpoint.Scheme != Uri.UriSchemeHttps ||
+            !endpoint.AbsolutePath.Contains("/api/projects/", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ModelTransportException(
+                ModelErrorCategory.InvalidConfiguration,
+                $"{EndpointVariable} must be an absolute HTTPS Microsoft Foundry project endpoint.");
+        }
+
+        return new Uri(endpoint.AbsoluteUri.TrimEnd('/') + "/", UriKind.Absolute);
     }
 
     public string DeploymentFor(ModelPath path) => path switch
@@ -133,21 +142,16 @@ public sealed class FoundryModelTransport : IModelTransport
         }
 
         var deployment = _options.DeploymentFor(request.Path);
-        var endpoint = new Uri(
-            _options.Endpoint,
-            $"openai/deployments/{Uri.EscapeDataString(deployment)}/chat/completions" +
-            $"?api-version={Uri.EscapeDataString(_options.ApiVersion)}");
+        var endpoint = new Uri(_options.ProjectEndpoint, "openai/v1/responses");
 
         using var message = new HttpRequestMessage(HttpMethod.Post, endpoint);
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken.Token);
         message.Content = new StringContent(
             JsonSerializer.Serialize(new
             {
-                messages = new[]
-                {
-                    new { role = "user", content = request.Prompt }
-                },
-                temperature = 0
+                model = deployment,
+                input = request.Prompt,
+                max_output_tokens = 256
             }),
             Encoding.UTF8,
             "application/json");
@@ -168,18 +172,25 @@ public sealed class FoundryModelTransport : IModelTransport
         try
         {
             using var document = JsonDocument.Parse(responseBody);
-            var content = document.RootElement
-                .GetProperty("choices")[0]
-                .GetProperty("message")
-                .GetProperty("content")
-                .GetString();
+            var content = string.Concat(
+                document.RootElement
+                    .GetProperty("output")
+                    .EnumerateArray()
+                    .SelectMany(output => output.GetProperty("content").EnumerateArray())
+                    .Where(item =>
+                        item.TryGetProperty("type", out var type) &&
+                        type.GetString() == "output_text")
+                    .Select(item => item.GetProperty("text").GetString()));
+            var model = document.RootElement.TryGetProperty("model", out var modelElement)
+                ? modelElement.GetString()
+                : null;
 
             if (string.IsNullOrWhiteSpace(content))
             {
                 throw new JsonException("The response content was empty.");
             }
 
-            return new ModelResponse(content, deployment);
+            return new ModelResponse(content, string.IsNullOrWhiteSpace(model) ? deployment : model);
         }
         catch (JsonException exception)
         {
@@ -211,11 +222,18 @@ public sealed class FoundryModelTransport : IModelTransport
         var diagnostic = string.IsNullOrWhiteSpace(requestId)
             ? "No service request ID was returned."
             : $"Service request ID: {requestId}.";
+        var retryAfter = response.Headers.RetryAfter?.Delta ??
+            (response.Headers.RetryAfter?.Date is { } retryDate
+                ? retryDate - DateTimeOffset.UtcNow
+                : statusCode == HttpStatusCode.TooManyRequests
+                    ? TimeSpan.FromSeconds(30)
+                    : null);
 
         return new ModelTransportException(
             category,
             $"Foundry returned HTTP {(int)statusCode} ({statusCode}). {diagnostic}",
             transient,
-            (int)statusCode);
+            (int)statusCode,
+            retryAfter: retryAfter);
     }
 }

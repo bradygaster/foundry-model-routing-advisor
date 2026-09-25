@@ -12,4 +12,8 @@
     <PackageReference Include="Azure.Identity" Version="1.13.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="ModelRoutingAdvisor.Tests" />
+  </ItemGroup>
+
 </Project>
