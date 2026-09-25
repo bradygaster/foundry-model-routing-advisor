@@ -93,7 +93,7 @@ change between requests as router policy and availability evolve.
 
 ## Compiled CLI acceptance matrix
 
-The session-local .NET 8 SDK ran 12 offline tests with 0 failures and both fake
+The .NET 10 SDK ran 12 offline tests with 0 failures and both fake
 routing paths completed in one attempt.
 
 The compiled authenticated CLI completed the low-cost path:
