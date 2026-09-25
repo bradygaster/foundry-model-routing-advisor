@@ -14,8 +14,8 @@ public sealed record ResilienceOptions(
     public static ResilienceOptions Default { get; } = new(
         MaxAttempts: 3,
         AttemptTimeout: TimeSpan.FromSeconds(30),
-        InitialRetryDelay: TimeSpan.FromMilliseconds(200),
-        MaxRetryDelay: TimeSpan.FromSeconds(2));
+        InitialRetryDelay: TimeSpan.FromSeconds(1),
+        MaxRetryDelay: TimeSpan.FromSeconds(4));
 
     public void Validate()
     {
@@ -58,6 +58,7 @@ public sealed class ResilientModelClient
     {
         for (var attempt = 1; attempt <= _options.MaxAttempts; attempt++)
         {
+            TimeSpan? serviceRetryDelay = null;
             using var attemptTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             attemptTimeout.CancelAfter(_options.AttemptTimeout);
 
@@ -92,6 +93,8 @@ public sealed class ResilientModelClient
                 {
                     return ModelExecutionResult.Failure(exception.Category, exception.Message, attempt);
                 }
+
+                serviceRetryDelay = exception.RetryAfter;
             }
             catch (HttpRequestException exception)
             {
@@ -104,14 +107,28 @@ public sealed class ResilientModelClient
                 }
             }
 
-            await DelayBeforeRetryAsync(attempt, cancellationToken).ConfigureAwait(false);
+            await DelayBeforeRetryAsync(attempt, serviceRetryDelay, cancellationToken).ConfigureAwait(false);
         }
 
         throw new InvalidOperationException("The bounded retry loop completed without a result.");
     }
 
-    private Task DelayBeforeRetryAsync(int failedAttempt, CancellationToken cancellationToken)
+    private Task DelayBeforeRetryAsync(
+        int failedAttempt,
+        TimeSpan? serviceRetryDelay,
+        CancellationToken cancellationToken)
     {
+        if (serviceRetryDelay is { } requestedDelay)
+        {
+            var boundedDelay = requestedDelay < TimeSpan.Zero
+                ? TimeSpan.Zero
+                : requestedDelay > TimeSpan.FromSeconds(30)
+                    ? TimeSpan.FromSeconds(30)
+                    : requestedDelay;
+
+            return Task.Delay(boundedDelay, cancellationToken);
+        }
+
         var multiplier = Math.Pow(2, failedAttempt - 1);
         var delayMilliseconds = Math.Min(
             _options.InitialRetryDelay.TotalMilliseconds * multiplier,

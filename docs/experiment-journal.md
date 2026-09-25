@@ -22,9 +22,9 @@ remaining authenticated validation.
 Use a deterministic, inspectable scoring policy before model invocation and keep
 all network access behind `IModelTransport`. This is smaller and more testable
 than using an LLM as the router, and it makes the low-cost control path truly
-local. A raw Azure OpenAI-compatible HTTP transport was chosen for the optional
-Foundry path so the sample needs only `Azure.Identity`; the transport selects one
-of two configured deployments and obtains a Cognitive Services bearer token with
+local. A raw Foundry Responses HTTP transport was chosen for the optional Foundry path
+so the sample needs only `Azure.Identity`; the transport selects one of two
+configured deployments and obtains a Foundry data-plane bearer token with
 `DefaultAzureCredential`.
 
 The local policy demonstrates application-owned routing. It does not claim to
@@ -55,8 +55,8 @@ meaningful differences from the parallel Squad path, not missing local code.
 | Bounded resilience | `ResilienceOptions` caps attempts at five and defaults to three; each attempt has its own timeout. |
 | Retry safety | Only transient transport, timeout, rate-limit, and service failures retry. |
 | Secretless authentication | Real mode uses `DefaultAzureCredential`; configuration contains endpoint and deployment names, not keys. |
-| Runtime API shape | Uses a Microsoft Foundry project endpoint with the `https://ai.azure.com/.default` audience; the exact API version still requires target-environment validation. |
-| Deployment availability | Unverified locally; must be proven in the target authenticated environment. |
+| Runtime API shape | Verified project-scoped `/openai/v1/responses` endpoint with the `https://ai.azure.com/.default` audience. |
+| Deployment availability | Existing `gpt-5-mini` and provisioned `model-router-advisor` deployments were verified in Sweden Central. |
 | Managed Model Router equivalence | Explicitly not assumed; this sample demonstrates application-owned deterministic routing. |
 | Rejected Squad branch | `7e7485bedfc57ae26d208b57596351986a6ff2a4` was not merged after pre-ship review found a likely wrong token audience, generic live diagnostics, permanently skipped live testing, duplicate JSON handling, missing CLI coverage, optimistic pre-review scores, and conflated resource/RBAC guidance. |
 
@@ -65,10 +65,10 @@ meaningful differences from the parallel Squad path, not missing local code.
 | Validation | Expected evidence | Result |
 |---|---|---|
 | Restore/build | .NET 8 projects restore and compile without credentials | Passed with .NET SDK 8.0.425; no cloud credentials supplied |
-| Targeted tests | Routing, token audience, retry, timeout, and error behavior pass offline | Passed: 9 tests, 0 failed, 0 skipped |
+| Targeted tests | Routing, endpoint construction, token audience, retry, timeout, and error behavior pass offline | Passed: 12 tests, 0 failed, 0 skipped |
 | Low-cost local route | Short prompt selects `LowCost` and fake model | Passed: score 0, one attempt, `offline-low-cost` |
 | High-capability local route | Complex prompt selects `HighCapability` and fake model | Passed: score 6, one attempt, `offline-high-capability` |
-| Authenticated runtime | Both configured deployments respond using `DefaultAzureCredential` | Not run; requires target environment |
+| Authenticated runtime | Both configured deployments respond using `DefaultAzureCredential` | Low-cost CLI passed; Model Router service call passed and exposed `gpt-5.4-mini-2026-03-17`; high-capability CLI exhausted three attempts with HTTP 429 |
 
 ## Friction and recovery
 
@@ -96,7 +96,7 @@ to clean once, build/test sequentially, then execute runtime checks with
 | Implementation completeness | 5 | Console app, fake and real transports, resilience, configuration, errors, docs, and tests are included. |
 | Test quality | 4 | Targeted offline tests cover core policy and failure behavior; live Foundry behavior remains environment-gated. |
 | Security and secret handling | 5 | No API-key path or committed secret values; real mode uses `DefaultAzureCredential` and HTTPS validation. |
-| Evidence discipline | 4 | Local versus authenticated claims are separated; authenticated evidence is intentionally still pending. |
+| Evidence discipline | 5 | Local and authenticated claims are separated, with sanitized commands, resource IDs, timestamps, results, and the remaining 429 gap. |
 | Recovery behavior | 5 | Work resumed after the four-minute stall with a bounded, durable implementation rather than another open-ended delegation. |
 | Delivery efficiency | 4 | One owner completed the vertical slice; absence of early architecture output caused duplicated architecture effort. |
 

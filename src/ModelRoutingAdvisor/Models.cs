@@ -24,12 +24,14 @@ public sealed class ModelTransportException : Exception
         string message,
         bool isTransient = false,
         int? statusCode = null,
-        Exception? innerException = null)
+        Exception? innerException = null,
+        TimeSpan? retryAfter = null)
         : base(message, innerException)
     {
         Category = category;
         IsTransient = isTransient;
         StatusCode = statusCode;
+        RetryAfter = retryAfter;
     }
 
     public ModelErrorCategory Category { get; }
@@ -37,6 +39,8 @@ public sealed class ModelTransportException : Exception
     public bool IsTransient { get; }
 
     public int? StatusCode { get; }
+
+    public TimeSpan? RetryAfter { get; }
 }
 
 public sealed record ModelExecutionResult(
