@@ -94,9 +94,9 @@ model=gpt-5-mini
 response=LOW_ROUTE_OK
 ```
 
-The same CLI command for the high-capability path remained rate limited after
-three attempts, including the bounded 30-second fallback between attempts. The
-final failure was:
+An initial CLI command for the high-capability path was rate limited after three
+attempts, including the bounded 30-second fallback between attempts. The final
+failure from that run was:
 
 ```text
 mode=foundry
@@ -109,9 +109,23 @@ error.category=RateLimited
 error.message=Foundry returned HTTP 429 (TooManyRequests). Service request ID: ee4fea4a-5c35-457a-b652-f13b268d1ae0.
 ```
 
-This is an account quota/rate-window gap rather than an authentication, endpoint,
-deployment, or parsing failure. The same deployment completed a project-scoped
-Responses request and reported `gpt-5.4-mini-2026-03-17`, as recorded above.
+This was a transient account rate-window condition rather than an authentication,
+endpoint, deployment, or parsing failure. At `2026-09-25T08:32Z`, an independent
+retry of the compiled high-capability CLI completed in one attempt:
+
+```text
+mode=foundry
+route=HighCapability
+score=6
+attempts=1
+deployment=model-router-advisor
+model=grok-4-1-fast-reasoning
+response=HIGH_ROUTE_OK
+```
+
+The two successful router calls returned different backing models, as expected
+for managed routing: `gpt-5.4-mini-2026-03-17` in the earlier direct Responses
+proof and `grok-4-1-fast-reasoning` in the later compiled CLI proof.
 
 ## Cost and cleanup
 
