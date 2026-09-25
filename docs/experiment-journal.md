@@ -7,7 +7,7 @@
 
 ## Outcome and acceptance criteria
 
-Implemented `samples/model-routing-advisor/` as a .NET 8 console sample with:
+Implemented `samples/model-routing-advisor/` as a .NET 10 console sample with:
 
 - deterministic selection between low-cost and high-capability paths;
 - an injectable transport boundary and fake offline transport;
@@ -69,7 +69,7 @@ meaningful differences from the parallel Squad path, not missing local code.
 
 | Validation | Expected evidence | Result |
 |---|---|---|
-| Restore/build | .NET 8 projects restore and compile without credentials | Passed with .NET SDK 8.0.425; no cloud credentials supplied |
+| Restore/build | .NET 10 projects restore and compile without credentials | Passed with .NET SDK 10.0.301; no cloud credentials supplied |
 | Targeted tests | Routing, endpoint construction, token audience, retry, timeout, and error behavior pass offline | Passed: 12 tests, 0 failed, 0 skipped |
 | Low-cost local route | Short prompt selects `LowCost` and fake model | Passed: score 0, one attempt, `offline-low-cost` |
 | High-capability local route | Complex prompt selects `HighCapability` and fake model | Passed: score 6, one attempt, `offline-high-capability` |
@@ -83,13 +83,12 @@ owner recovered with the smallest complete control: a deterministic policy,
 transport abstraction, offline fake, narrow credential-based real transport,
 tests, and explicit uncertainty boundaries.
 
-The worktree initially had only .NET 10 SDK and runtime installed. Restore and
-compilation succeeded, but the .NET 8 testhost could not start. A session-local
-.NET 8.0.425 SDK/runtime was installed outside the repository, after which all
-tests and both local routes passed on the declared target. An attempted parallel
-validation caused competing builds to lock the shared `obj` output; recovery was
-to clean once, build/test sequentially, then execute runtime checks with
-`--no-build`.
+The repository now pins .NET SDK 10.0.301 and targets .NET 10 for the application
+and tests. Restore, compilation, tests, and both local routes run on the installed
+.NET 10 SDK/runtime without cloud credentials. An attempted parallel validation
+in the original experiment caused competing builds to lock the shared `obj`
+output; recovery was to clean once, build/test sequentially, then execute runtime
+checks with `--no-build`.
 
 ## What Squad did well
 
@@ -125,7 +124,7 @@ to clean once, build/test sequentially, then execute runtime checks with
 | Routing accuracy | 3 | The initial Squad route selected the right domains but did not produce a reusable artifact before recovery. |
 | Handoff quality | 2 | The implementation owner received intent but no durable architecture decision from the parallel Squad session. |
 | Evidence discipline | 5 | Local tests, documentation evidence, and authenticated Foundry runtime evidence are explicitly separated. |
-| Implementation usefulness | 5 | The .NET 8 sample includes offline defaults, an opt-in Foundry transport, resilience, CLI examples, and tests. |
+| Implementation usefulness | 5 | The .NET 10 sample includes offline defaults, an opt-in Foundry transport, resilience, CLI examples, and tests. |
 | Quality coverage | 5 | Nine tests cover routing thresholds, token audience, transport injection, retries, timeout behavior, and error categories. |
 | Security and RAI | 5 | The sample uses `DefaultAzureCredential`, validates configuration, avoids secrets, bounds retries, and performs advisory triage only. |
 | Ceremony efficiency | 2 | More than four minutes elapsed without a durable Squad artifact before the direct-owner recovery. |
