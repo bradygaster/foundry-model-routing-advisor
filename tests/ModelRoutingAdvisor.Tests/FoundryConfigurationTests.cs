@@ -19,10 +19,10 @@ public sealed class FoundryConfigurationTests
     public void ProjectEndpointIsNormalizedWithTrailingSlash()
     {
         var endpoint = FoundryOptions.NormalizeProjectEndpoint(
-            new Uri("https://example.services.ai.azure.com/api/projects/example-project"));
+            new Uri("https://foundry.example.invalid/api/projects/example-project"));
 
         Assert.Equal(
-            "https://example.services.ai.azure.com/api/projects/example-project/",
+            "https://foundry.example.invalid/api/projects/example-project/",
             endpoint.AbsoluteUri);
     }
 
@@ -31,23 +31,23 @@ public sealed class FoundryConfigurationTests
     {
         var handler = new RecordingHandler();
         var options = new FoundryOptions(
-            new Uri("https://example.services.ai.azure.com/api/projects/example-project/"),
+            new Uri("https://foundry.example.invalid/api/projects/example-project/"),
             "gpt-5-mini",
-            "model-router-advisor");
+            "example-model-router");
         var transport = new FoundryModelTransport(
             new HttpClient(handler),
             options,
             new StaticTokenCredential());
 
         var response = await transport.SendAsync(
-            new ModelRequest("test", ModelPath.HighCapability, "model-router-advisor"),
+            new ModelRequest("test", ModelPath.HighCapability, "example-model-router"),
             CancellationToken.None);
 
         Assert.Equal(
-            "https://example.services.ai.azure.com/api/projects/example-project/openai/v1/responses",
+            "https://foundry.example.invalid/api/projects/example-project/openai/v1/responses",
             handler.RequestUri?.AbsoluteUri);
         Assert.Equal("Bearer", handler.AuthorizationScheme);
-        Assert.Contains("\"model\":\"model-router-advisor\"", handler.RequestBody);
+        Assert.Contains("\"model\":\"example-model-router\"", handler.RequestBody);
         Assert.Contains("\"max_output_tokens\":256", handler.RequestBody);
         Assert.Equal("gpt-5.4-mini-2026-03-17", response.ModelId);
     }

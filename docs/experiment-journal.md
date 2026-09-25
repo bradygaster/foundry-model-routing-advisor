@@ -1,5 +1,10 @@
 # Model routing advisor experiment journal
 
+> [!IMPORTANT]
+> **Every Azure name, ID, endpoint, deployment, model/output identifier, and
+> command result in this journal is fictional or sanitized.** Nothing shown here
+> identifies a live Azure resource, tenant, subscription, user, or operator.
+
 ## Outcome and acceptance criteria
 
 Implemented `samples/model-routing-advisor/` as a .NET 8 console sample with:
@@ -56,7 +61,7 @@ meaningful differences from the parallel Squad path, not missing local code.
 | Retry safety | Only transient transport, timeout, rate-limit, and service failures retry. |
 | Secretless authentication | Real mode uses `DefaultAzureCredential`; configuration contains endpoint and deployment names, not keys. |
 | Runtime API shape | Verified project-scoped `/openai/v1/responses` endpoint with the `https://ai.azure.com/.default` audience. |
-| Deployment availability | Existing `gpt-5-mini` and provisioned `model-router-advisor` deployments were verified in Sweden Central. |
+| Deployment availability | Sanitized evidence recorded successful calls to example low-cost and Model Router deployments; availability must be verified in the reader's own subscription and region. |
 | Managed Model Router equivalence | Explicitly not assumed; this sample demonstrates application-owned deterministic routing. |
 | Rejected Squad branch | `7e7485bedfc57ae26d208b57596351986a6ff2a4` was not merged after pre-ship review found a likely wrong token audience, generic live diagnostics, permanently skipped live testing, duplicate JSON handling, missing CLI coverage, optimistic pre-review scores, and conflated resource/RBAC guidance. |
 
@@ -68,7 +73,7 @@ meaningful differences from the parallel Squad path, not missing local code.
 | Targeted tests | Routing, endpoint construction, token audience, retry, timeout, and error behavior pass offline | Passed: 12 tests, 0 failed, 0 skipped |
 | Low-cost local route | Short prompt selects `LowCost` and fake model | Passed: score 0, one attempt, `offline-low-cost` |
 | High-capability local route | Complex prompt selects `HighCapability` and fake model | Passed: score 6, one attempt, `offline-high-capability` |
-| Authenticated runtime | Both configured deployments respond using `DefaultAzureCredential` | Low-cost CLI passed; after a transient 429 window, the high-capability CLI passed in one attempt and Model Router selected `grok-4-1-fast-reasoning` |
+| Authenticated runtime | Both configured deployments respond using `DefaultAzureCredential` | Sanitized example: low-cost CLI passed; after a transient 429 window, the high-capability CLI passed in one attempt and Model Router selected `<service-selected-model>` |
 
 ## Friction and recovery
 
