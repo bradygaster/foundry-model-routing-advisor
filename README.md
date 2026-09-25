@@ -1,5 +1,11 @@
 # Model Routing Advisor
 
+> [!IMPORTANT]
+> **All Azure names, IDs, endpoints, deployment names, model/output identifiers,
+> and command results in this repository are fictional or sanitized examples.**
+> They are not live, do not identify real Azure resources or users, and must be
+> replaced with values from your own environment before authenticated use.
+
 A compact .NET 8 console sample that deterministically selects either a low-cost
 or high-capability model path. The default experience is fully local: it uses a
 fake transport, requires no cloud account, and makes no network calls at runtime.
@@ -54,12 +60,15 @@ CLI login for development or managed identity when hosted. Interactive browser
 authentication is intentionally disabled.
 
 ```bash
-az login --tenant 72f988bf-86f1-41af-91ab-2d7cd011db47
-az account set --subscription 104482b7-4580-4de0-9453-0fc78df0b80e
+export AZURE_TENANT_ID="00000000-0000-4000-8000-000000000002" # FICTIONAL; replace
+export AZURE_SUBSCRIPTION_ID="00000000-0000-4000-8000-000000000001" # FICTIONAL; replace
 
-export FOUNDRY_ENDPOINT="https://squad-imagegen-swc-1ntj32.services.ai.azure.com/api/projects/squad-imagegen-swc-1ntj32-proj"
-export FOUNDRY_LOW_COST_DEPLOYMENT="gpt-5-mini"
-export FOUNDRY_HIGH_CAPABILITY_DEPLOYMENT="model-router-advisor"
+az login --tenant "$AZURE_TENANT_ID"
+az account set --subscription "$AZURE_SUBSCRIPTION_ID"
+
+export FOUNDRY_ENDPOINT="https://<your-account-name>.services.ai.azure.com/api/projects/<your-project-name>"
+export FOUNDRY_LOW_COST_DEPLOYMENT="<your-low-cost-deployment>"
+export FOUNDRY_HIGH_CAPABILITY_DEPLOYMENT="<your-model-router-deployment>"
 
 dotnet run --project src/ModelRoutingAdvisor -- --real \
   --prompt "Summarize deterministic routing in one sentence."
@@ -77,21 +86,29 @@ exponential backoff.
 
 ## Reproducible Azure deployment
 
-The existing `gpt-5-mini` deployment is reused for the low-cost path. Create the
-high-capability Model Router deployment with the idempotent script:
+Provide every target value explicitly, then create the high-capability Model
+Router deployment with the idempotent script:
 
 ```bash
+export AZURE_SUBSCRIPTION_ID="00000000-0000-4000-8000-000000000001" # FICTIONAL; replace
+export AZURE_RESOURCE_GROUP="<your-resource-group>"
+export AZURE_AI_ACCOUNT="<your-foundry-account>"
+export AZURE_AI_PROJECT="<your-foundry-project>"
+export MODEL_ROUTER_DEPLOYMENT="<your-model-router-deployment>"
+export MODEL_ROUTER_VERSION="<available-model-router-version>"
+export MODEL_ROUTER_SKU="<supported-sku>"
+export MODEL_ROUTER_CAPACITY="<positive-capacity>"
+
 ./scripts/provision-model-router.sh
 ```
 
-The defaults target the subscription, resource group, account, deployment name,
-model version, and the service's default capacity of 10. Capacity 1 proved too
-restrictive for bounded retry validation. Every value can be overridden by an
-environment variable documented in the script. Model Router is usage-billed and
-the deployment reserves rate-limit capacity, not dedicated compute. Remove the
-sample deployment when it is no longer needed:
+The script has no Azure defaults and exits before calling Azure CLI if any input
+is missing. Model Router is usage-billed and deployment capacity represents a
+rate-limit allocation rather than dedicated compute. Remove a deployment only
+after explicitly confirming its name:
 
 ```bash
+export CONFIRM_DELETE_DEPLOYMENT="$MODEL_ROUTER_DEPLOYMENT"
 ./scripts/delete-model-router.sh
 ```
 
