@@ -14,8 +14,8 @@ Implemented `samples/model-routing-advisor/` as a .NET 8 console sample with:
 - documentation that separates local proof from authenticated runtime proof.
 
 Acceptance is local build success, all targeted tests passing, both local routes
-executing, no committed credential values, and explicit documentation of the
-remaining authenticated validation.
+executing, no committed credential values, and authenticated execution of both
+configured routing paths.
 
 ## Architecture decision
 
@@ -68,7 +68,7 @@ meaningful differences from the parallel Squad path, not missing local code.
 | Targeted tests | Routing, endpoint construction, token audience, retry, timeout, and error behavior pass offline | Passed: 12 tests, 0 failed, 0 skipped |
 | Low-cost local route | Short prompt selects `LowCost` and fake model | Passed: score 0, one attempt, `offline-low-cost` |
 | High-capability local route | Complex prompt selects `HighCapability` and fake model | Passed: score 6, one attempt, `offline-high-capability` |
-| Authenticated runtime | Both configured deployments respond using `DefaultAzureCredential` | Low-cost CLI passed; Model Router service call passed and exposed `gpt-5.4-mini-2026-03-17`; high-capability CLI exhausted three attempts with HTTP 429 |
+| Authenticated runtime | Both configured deployments respond using `DefaultAzureCredential` | Low-cost CLI passed; after a transient 429 window, the high-capability CLI passed in one attempt and Model Router selected `grok-4-1-fast-reasoning` |
 
 ## Friction and recovery
 
@@ -96,7 +96,7 @@ to clean once, build/test sequentially, then execute runtime checks with
 | Implementation completeness | 5 | Console app, fake and real transports, resilience, configuration, errors, docs, and tests are included. |
 | Test quality | 4 | Targeted offline tests cover core policy and failure behavior; live Foundry behavior remains environment-gated. |
 | Security and secret handling | 5 | No API-key path or committed secret values; real mode uses `DefaultAzureCredential` and HTTPS validation. |
-| Evidence discipline | 5 | Local and authenticated claims are separated, with sanitized commands, resource IDs, timestamps, results, and the remaining 429 gap. |
+| Evidence discipline | 5 | Local and authenticated claims are separated, with sanitized commands, resource IDs, timestamps, transient 429 evidence, and subsequent success. |
 | Recovery behavior | 5 | Work resumed after the four-minute stall with a bounded, durable implementation rather than another open-ended delegation. |
 | Delivery efficiency | 4 | One owner completed the vertical slice; absence of early architecture output caused duplicated architecture effort. |
 
